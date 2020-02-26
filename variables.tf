@@ -1,31 +1,36 @@
 variable "gcp_project" {
-  description = "The name of the GCP Project where all resources will be launched."
+  default     = "kinetic-scheme-258018"
+  description = "The project ID where all resources will be launched."
+  type        = string
 }
 
 variable "gcp_region" {
   description = "The region in which all GCP resources will be launched."
-  default     = "us-east1"
+  default     = "us-central1"
+  type        = string
 }
 
 variable "cluster_name" {
-  description = "GKE cluster name"
+  description = "The name of the Kubernetes cluster."
+  type        = string
+  default     = "info-cluster"
 }
 
 variable "master_version" {
   description = "Kubernetes cluster master version"
-  default     = "1.10.7-gke.2"
+  default     = "1.15.9-gke.9"
 }
 
 variable "master_username" {
-  description = "GKE cluster master username"
+  default = "info"
 }
 
 variable "master_password" {
-  description = "GKE cluster master password"
+  default = "twXp7g5hEnCUDE9dFFra3pKuuJGEMT"
 }
 
 variable "cluster_region" {
-  description = "GKE cluster region"
+  default = "us-central1"
 }
 
 variable "helm_repository" {
