@@ -1,34 +1,46 @@
-provider "google" {
-  version = "~> 1.17"
+# ---------------------------------------------------------------------------------------------------------------------
+# DEPLOY A GKE PRIVATE CLUSTER IN GOOGLE CLOUD PLATFORM
+# This is an example of how to use the gke-cluster module to deploy a private Kubernetes cluster in GCP
+# ---------------------------------------------------------------------------------------------------------------------
 
-  project = "${var.gcp_project}"
-  region  = "${var.gcp_region}"
+terraform {
+  # The modules used in this example have been updated with 0.12 syntax, additionally we depend on a bug fixed in
+  # version 0.12.7.
+  required_version = ">= 0.12.7"
+}
+
+
+provider "google" {
+  version     = "~> 2.20.2"
+  credentials = file("./key.json")
+  project     = "var.gcp_project"
+  region      = var.gcp_region
 }
 
 provider "kubernetes" {
-  version = "~> 1.2"
+  version     = "~> 1.11.0"
+  credentials = file("./key.json")
+  host        = "https://${google_container_cluster.gke_cluster.endpoint}"
+  username    = var.master_username
+  password    = var.master_password
 
-  host     = "https://${google_container_cluster.gke_cluster.endpoint}"
-  username = "${var.master_username}"
-  password = "${var.master_password}"
-
-  client_certificate     = "${base64decode(google_container_cluster.gke_cluster.master_auth.0.client_certificate)}"
-  client_key             = "${base64decode(google_container_cluster.gke_cluster.master_auth.0.client_key)}"
-  cluster_ca_certificate = "${base64decode(google_container_cluster.gke_cluster.master_auth.0.cluster_ca_certificate)}"
+  client_certificate     = base64decode(google_container_cluster.gke_cluster.master_auth.0.client_certificate)
+  client_key             = base64decode(google_container_cluster.gke_cluster.master_auth.0.client_key)
+  cluster_ca_certificate = base64decode(google_container_cluster.gke_cluster.master_auth.0.cluster_ca_certificate)
 }
 
 resource "google_container_cluster" "gke_cluster" {
-  name               = "${var.cluster_name}"
-  region             = "${var.gcp_region}"
-  min_master_version = "${var.master_version}"
+  name               = var.cluster_name
+  location           = var.gcp_region
+  min_master_version = var.master_version
 
   master_auth {
-    username = "${var.master_username}"
-    password = "${var.master_password}"
+    username = var.master_username
+    password = var.master_password
   }
 
   lifecycle {
-    ignore_changes = ["node_pool"]
+    ignore_changes = [node_pool]
   }
 
   node_pool {
@@ -38,13 +50,13 @@ resource "google_container_cluster" "gke_cluster" {
 
 resource "google_container_node_pool" "gke_node_pool" {
   name       = "${var.cluster_name}-pool"
-  region     = "${var.gcp_region}"
-  cluster    = "${google_container_cluster.gke_cluster.name}"
-  node_count = "${var.min_node_count}"
+  location   = var.gcp_region
+  cluster    = google_container_cluster.gke_cluster.name
+  node_count = var.min_node_count
 
   autoscaling {
-    min_node_count = "${var.min_node_count}"
-    max_node_count = "${var.max_node_count}"
+    min_node_count = var.min_node_count
+    max_node_count = var.max_node_count
   }
 
   node_config {
@@ -58,7 +70,7 @@ resource "google_container_node_pool" "gke_node_pool" {
 }
 
 resource "null_resource" "install_istio" {
-  triggers {
+  triggers = {
     cluster_ep = "${google_container_cluster.gke_cluster.endpoint}"
   }
 
@@ -84,7 +96,7 @@ resource "null_resource" "install_istio" {
           --version $${ISTIO_VERSION}
     EOT
 
-    environment {
+    environment = {
       CA_CERTIFICATE = "${base64decode(google_container_cluster.gke_cluster.master_auth.0.cluster_ca_certificate)}"
       K8S_SERVER     = "https://${google_container_cluster.gke_cluster.endpoint}"
       K8S_USERNAME   = "${var.master_username}"
@@ -94,5 +106,5 @@ resource "null_resource" "install_istio" {
     }
   }
 
-  depends_on = ["google_container_node_pool.gke_node_pool"]
+  depends_on = [google_container_node_pool.gke_node_pool]
 }
