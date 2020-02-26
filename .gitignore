@@ -10,5 +10,7 @@
 
 # .tfvars files
 *.tfvars
+*.log
+key.json
 
 svc-account.json
